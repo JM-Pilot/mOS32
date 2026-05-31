@@ -1,0 +1,28 @@
+To change fonts you need to change this in the make file: 
+
+	
+$(BIN_DIR)/kernel/misc/ter-u16n.o: $(SRC_DIR)/kernel/misc/ter-u16n.psf
+	mkdir -p $(dir $@)
+	objcopy -O elf32-i386 -B i386 -I binary $< $@
+	readelf -sW $@
+
+Make sure your fonts are in the directory (kernel/misc/) for example
+or it wont load
+
+and read the readelf output.  example :
+Symbol table '.symtab' contains 4 entries:
+   Num:    Value  Size Type    Bind   Vis      Ndx Name
+     0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: 00000000     0 NOTYPE  GLOBAL DEFAULT    1 _binary_src_kernel_misc_ter_u16n_psf_start
+     2: 00001414     0 NOTYPE  GLOBAL DEFAULT    1 _binary_src_kernel_misc_ter_u16n_psf_end
+     3: 00001414     0 NOTYPE  GLOBAL DEFAULT  ABS _binary_src_kernel_misc_ter_u16n_psf_size
+
+Only get the _binary_src_kernel_misc_ter_u16n_psf_start
+then is psf.c change extern char _binary_src_kernel_misc_ter_u16n_psf_start
+to _binary_src_kernel_(dir)_(font_name)_psf_start
+
+QNA:
+
+Q: Fonts not loading
+A: Make it into PSF2_font (currently dont have the implementation yet)
+
