@@ -11,7 +11,7 @@ struct PSF1_font{
 
 #define MAIN_FONT_WIDTH 8
 #define MAIN_FONT_HEIGHT 16
-extern struct PSF1_font *main_font;
+extern struct PSF1_font *font_main;
 // Loads Terminus u16n 
 void psf1_load();
 void psf1_render_char(uint8_t c, int x, int y, uint32_t fg, uint32_t bg);

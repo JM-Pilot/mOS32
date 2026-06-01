@@ -1,16 +1,16 @@
 #include "psf.h"
 #include "framebuffer.h"
 #include <stdint.h>
-#include <kernel/kernel.h>
+#include "../../kernel.h"
 
 extern char _binary_src_kernel_misc_ter_u16n_psf_start;
-struct PSF1_font *main_font;
+struct PSF1_font *font_main;
 
 void psf1_load(){
-	main_font = (struct PSF1_font*)&
+	font_main = (struct PSF1_font*)&
 	_binary_src_kernel_misc_ter_u16n_psf_start;
 
-	if (main_font->magic != PSF1_FONT_MAGIC)
+	if (font_main->magic != PSF1_FONT_MAGIC)
 		hcf();
 }
 void psf1_render_char(uint8_t c, int x, int y, uint32_t fg, uint32_t bg){

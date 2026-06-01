@@ -15,4 +15,5 @@ struct framebuffer {
 extern struct framebuffer fb_main;
 void fb_init(multiboot_info_t *mb_info);
 void fb_plot_pixel(uint32_t color, int x, int y);
+void fb_clr(uint32_t col);
 #endif
