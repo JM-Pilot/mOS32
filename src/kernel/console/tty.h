@@ -12,7 +12,6 @@ struct tty {
 	int cursor_y;
 	uint32_t fg;
 	uint32_t bg;
-	char input_buf[STDIN_BUF_SIZE];
 };
 
 extern struct tty tty_main;

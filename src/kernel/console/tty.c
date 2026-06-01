@@ -71,9 +71,9 @@ int tty_read(char *buf, int n){
 		if (c == '\b'){
 			if (i > 0){
 				i--;
-			} else {
-				continue;
-			}
+				k_putc('\b', STDOUT);
+			} 
+			continue;
 		}
 		buf[i++] = c;
 		k_putc(c, STDOUT);
