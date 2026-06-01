@@ -1,3 +1,4 @@
+/* MIT LICENSE (C) 2026 JM-Pilot */
 #include <libk/stdio.h>
 #include "../kernel/console/tty.h"
 void k_putc(char c, int fd){

@@ -1,3 +1,4 @@
+/* MIT LICENSE (C) 2026 JM-Pilot */
 	.set ALIGN,    1<<0
 	.set MEMINFO,  1<<1 
 	.set VIDEO,    1<<2

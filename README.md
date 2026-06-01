@@ -1,6 +1,6 @@
 <h1 align="center">mOS32 (MyOS32) a better version of MyOS</h1>
 <h3>Info</h3>
-Written by JM-Pilot and Licensed under MIT License [1](/LICENSE)
+Written by JM-Pilot and Licensed under [MIT License](LICENSE)
 
 (no ai code just help understand the wiki because its confusing)
 

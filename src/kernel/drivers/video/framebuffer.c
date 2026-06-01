@@ -1,3 +1,4 @@
+/* MIT LICENSE (C) 2026 JM-Pilot */
 #include <boot/multiboot.h>
 #include <stdint.h>
 #include "framebuffer.h"

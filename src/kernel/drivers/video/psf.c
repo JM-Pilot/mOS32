@@ -1,3 +1,4 @@
+/* MIT LICENSE (C) 2026 JM-Pilot */
 #include "psf.h"
 #include "framebuffer.h"
 #include <stdint.h>

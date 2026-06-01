@@ -1,8 +1,11 @@
+/* MIT LICENSE (C) 2026 JM-Pilot */
 #include "stdint.h"
 #include <stddef.h>
 #include "tty.h"
 #include "../drivers/video/psf.h"
 #include "../drivers/video/framebuffer.h"
+#include "../drivers/input/ps2.h"
+#include <libk/stdio.h>
 struct tty tty_main;
 struct tty *tty_current;
 
@@ -11,6 +14,7 @@ void tty_init(struct tty *t, uint32_t fg, uint32_t bg) {
 	t->cursor_y = 0;
 	t->fg = fg;
 	t->bg = bg;
+
 	fb_clr(bg);
 }
 void tty_set_current(struct tty *t){
@@ -20,7 +24,6 @@ void tty_set_current(struct tty *t){
 #define MAX_CELLS_X (fb_main.width / MAIN_FONT_WIDTH)
 #define MAX_CELLS_Y (fb_main.height / MAIN_FONT_HEIGHT)
 void tty_write_char(char c){
-
 	switch (c){
 		case '\n':
 			tty_current->cursor_x = 0;
@@ -34,6 +37,8 @@ void tty_write_char(char c){
 			return;
 		case '\b':
 			if (tty_current->cursor_x == 0) return;
+			tty_current->cursor_x--;
+			tty_write_char(' ');
 			tty_current->cursor_x--;
 			return;
 		case '\t':
@@ -51,11 +56,29 @@ void tty_write_char(char c){
 		tty_current->fg, tty_current->bg);
 
 	if ((uint64_t)(tty_current->cursor_x++) > MAX_CELLS_X){
-		tty_current->cursor_x = 0;
 		tty_current->cursor_y++;
+		tty_current->cursor_x = 0;
 		if ((uint64_t)tty_current->cursor_y > MAX_CELLS_Y){
 			tty_current->cursor_y = 0;
 		}
 	}
-	
 }
+
+int tty_read(char *buf, int n){
+	int i = 0;
+	char c;
+	while (i < n && (c = ps2_getch()) != '\n'){
+		if (c == '\b'){
+			if (i > 0){
+				i--;
+			} else {
+				continue;
+			}
+		}
+		buf[i++] = c;
+		k_putc(c, STDOUT);
+	}
+	buf[i++] = '\0';
+	return i;
+}
+
