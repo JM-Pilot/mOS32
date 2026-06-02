@@ -47,14 +47,25 @@ $(BIN_DIR)/$(OUTPUT)_kernel.bin: $(OBJS)
 		exit 1; \
 	fi;
 
+$(BIN_DIR)/$(OUTPUT)_disk.img:
+	dd if=/dev/zero of=$@ bs=512 count=131072
+	mkfs.fat -F 32 $@
+	mkdir -p $(BIN_DIR)/mnt
+	sudo mount -o loop,uid=$(shell id -u),gid=$(shell id -g) $@ $(BIN_DIR)/mnt
+	echo "Hello World" > $(BIN_DIR)/mnt/HELLO.TXT
+	sudo umount $(BIN_DIR)/mnt
+
 $(BIN_DIR)/$(OUTPUT).iso: $(BIN_DIR)/$(OUTPUT)_kernel.bin
 	mkdir -p $(BIN_DIR)/iso_build/boot/grub
 	cp $(SRC_DIR)/kernel/entry/grub.cfg $(BIN_DIR)/iso_build/boot/grub/
 	cp $< $(BIN_DIR)/iso_build/boot
 	grub-mkrescue -o $@ $(BIN_DIR)/iso_build
 
-run: $(BIN_DIR)/$(OUTPUT).iso
-	qemu-system-i386 -hda $< -no-reboot -no-shutdown -d int,cpu_reset \
+run: $(BIN_DIR)/$(OUTPUT).iso $(BIN_DIR)/$(OUTPUT)_disk.img
+	qemu-system-i386 -cdrom $(BIN_DIR)/$(OUTPUT).iso \
+	 	-drive file=$(BIN_DIR)/$(OUTPUT)_disk.img,format=raw \
+		-boot d \
+		-no-reboot -no-shutdown -d int,cpu_reset \
 		-D $(BIN_DIR)/QEMU_LOG.txt
 
 clean:

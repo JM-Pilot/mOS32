@@ -5,6 +5,7 @@
 #include <libk/string.h>
 #include "console/tty.h"
 #include "shell/shell.h"
+#include "drivers/disk/ata.h"
 void kernel_main(multiboot_info_t *mb_info){
 	kernel_init(mb_info);
 	

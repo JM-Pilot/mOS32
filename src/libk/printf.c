@@ -37,6 +37,14 @@ void k_vsprintf(char *buf, const char *fmt, va_list args){
 						buf[i++] = *s++;
 					break;
 				}
+				case 'u': {
+					char tmp[10];
+					k_itoa(tmp, va_arg(args, uint32_t), 
+						BASE_DEC);
+					for (int j = 0; tmp[j] != '\0'; j++)
+						buf[i++] = tmp[j];
+					break;
+				}
 				default: {
 					buf[i++] = *fmt;
 					break;

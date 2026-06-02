@@ -1,4 +1,5 @@
 /* MIT LICENSE (C) 2026 JM-Pilot */
+#include <stdint.h>
 #ifndef KERNEL_STDLIB_H
 #define KERNEL_STDLIB_H
 
@@ -8,4 +9,7 @@
 /* No octal because who even uses that */
 
 char *k_itoa(char *buf, int val, int base);
+
+void *kmalloc(uint32_t size);
+void kfree(void *ptr);
 #endif

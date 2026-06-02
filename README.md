@@ -17,7 +17,9 @@ i686-elf tools (compiled from source)
 binutils (not i686-elf-binutils)
 ```
 
-After getting these tools you should be ready to compile
+After getting these tools you should be ready to compile. Be warned though we
+ask for sudo permission, just type your password... nothing will not happen to 
+your system
 
 ```
 make clean && make

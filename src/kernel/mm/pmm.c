@@ -41,7 +41,6 @@ void pmm_init(multiboot_info_t *mb_info){
 		mmap = (multiboot_memory_map_t *) ((uint32_t)mmap + 
 					       mmap->size + sizeof(mmap->size));
 	}
-	k_printf("TOTAL MEMORY: %d MB\n",total_memory / (1024 * 1024));
 	total_pages = total_memory / 4096;
 	bitmap = (uint8_t*)&_kernel_end;
 	k_memset(bitmap, 0xFF, total_pages / 8);
@@ -64,11 +63,15 @@ void pmm_init(multiboot_info_t *mb_info){
 }
 
 uint32_t pmm_alloc(){
-	for (int i = 0; i < total_pages; i++){
+	for (uint32_t i = 0; i < total_pages; i++){
 		if (!(bitmap[i / 8] & (1 << (i % 8)))){
 			bitmap[i / 8] |= (1 << (i % 8));
 			return i * 4096;
 		}
 	}
 	return 0;
+}
+
+uint32_t get_total_mem(){
+	return total_memory;
 }

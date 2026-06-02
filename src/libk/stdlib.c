@@ -2,6 +2,7 @@
 #include <libk/stdlib.h>
 #include <stdint.h>
 #include "../kernel/kernel.h"
+#include "../kernel/mm/heap.h"
 char *k_itoa(char *buf, int val, int base){
 	if (base == BASE_DEC){
 		int i, sign;
