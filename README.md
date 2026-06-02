@@ -1,8 +1,6 @@
 <h1 align="center">mOS32 (MyOS32) a better version of MyOS</h1>
 <h3>Info</h3>
-Written by JM-Pilot and Licensed under [MIT License](LICENSE)
-
-(no ai code just help understand the wiki because its confusing)
+Written by JM-Pilot and Licensed under MIT License
 
 A kernel in x86_32 BIOS Using GRUB as its bootloader, its goal is to make old PCs
 work again
@@ -30,3 +28,6 @@ or run after compiling
 ```
 make clean && make run
 ```
+
+<h3>Contributing</h3>
+> [Guide is here](/docs/CONTRIBUTING.md)
