@@ -1,7 +1,7 @@
 /* MIT LICENSE (C) 2026 JM-Pilot */
 #include <libk/stdlib.h>
 #include <stdint.h>
-
+#include "../kernel/kernel.h"
 char *k_itoa(char *buf, int val, int base){
 	if (base == BASE_DEC){
 		int i, sign;
@@ -25,7 +25,7 @@ char *k_itoa(char *buf, int val, int base){
 		char hex_val[] = "0123456789ABCDEF";
 		char tmp_buffer[10]; 
 		int i, j;
-		for (i = 0; i < 7; i++) {
+		for (i = 0; i < 8; i++) {
 			tmp_buffer[i] = hex_val[val & 0x0F];
 			val >>= 4;
 		}
@@ -50,4 +50,11 @@ char *k_itoa(char *buf, int val, int base){
 		buf[j++] = '\0';
 	}
 	return buf;
+}
+
+void *kmalloc(uint32_t size) { 
+	return heap_alloc(&k_heap, size); 
+}
+void kfree(void *ptr) { 
+	heap_free(&k_heap, ptr);
 }

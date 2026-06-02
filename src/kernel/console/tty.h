@@ -25,4 +25,6 @@ void tty_write_char(char c);
 
 int tty_read(char *buf, int n);
 
+void tty_scroll_up();
+
 #endif

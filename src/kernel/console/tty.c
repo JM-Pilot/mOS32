@@ -6,6 +6,7 @@
 #include "../drivers/video/framebuffer.h"
 #include "../drivers/input/ps2.h"
 #include <libk/stdio.h>
+#include <libk/string.h>
 struct tty tty_main;
 struct tty *tty_current;
 
@@ -28,8 +29,8 @@ void tty_write_char(char c){
 		case '\n':
 			tty_current->cursor_x = 0;
 			tty_current->cursor_y++;
-			if ((uint64_t)tty_current->cursor_y > MAX_CELLS_Y){
-				tty_current->cursor_y = 0;
+			if ((uint64_t)tty_current->cursor_y >= MAX_CELLS_Y){
+				tty_scroll_up();
 			}
 			return;
 		case '\r':
@@ -58,8 +59,8 @@ void tty_write_char(char c){
 	if ((uint64_t)(tty_current->cursor_x++) > MAX_CELLS_X){
 		tty_current->cursor_y++;
 		tty_current->cursor_x = 0;
-		if ((uint64_t)tty_current->cursor_y > MAX_CELLS_Y){
-			tty_current->cursor_y = 0;
+		if ((uint64_t)tty_current->cursor_y >= MAX_CELLS_Y){
+			tty_scroll_up();
 		}
 	}
 }
@@ -78,7 +79,14 @@ int tty_read(char *buf, int n){
 		buf[i++] = c;
 		k_putc(c, STDOUT);
 	}
-	buf[i++] = '\0';
+	buf[i] = '\0';
 	return i;
 }
 
+void tty_scroll_up(){
+	uint8_t *addr = (uint8_t*)fb_main.addr;
+	uint32_t line = fb_main.pitch * MAIN_FONT_HEIGHT;
+	k_memmove(addr, addr + line, fb_main.pitch * fb_main.height - line);
+	k_memset(addr + fb_main.pitch * fb_main.height - line, 0, line);
+	tty_current->cursor_y -= 1;
+}
