@@ -6,7 +6,23 @@
 #include <libk/string.h>
 #include "../drivers/video/framebuffer.h"
 #include "../mm/pmm.h"
+#include "../fs/fat32.h"
+#include <libk/stdlib.h>
 char buf[1024];
+
+
+void ls_root(){
+	struct fat32_dir_entry *dir = fat32_read_dir(
+		fat32_cluster_to_lba(fat_info.root_clust));
+	for (int i = 0; i < 512 / 32; i++) {
+		if (dir[i].filename[0] == 0x00) break;
+		if (dir[i].filename[0] == 0xE5) continue;
+		for (int j = 0; j < 11; j++)
+			k_printf("%c", dir[i].filename[j]);
+		k_printf("\n");
+	}
+	kfree(dir);
+}
 
 void shell_execute(){
 	if (k_strncmp(buf, "help", 4) == 0){
@@ -14,6 +30,7 @@ void shell_execute(){
 		k_printf("help    -- Give information and list all cmds\n");
 		k_printf("sysinfo -- Give information about the system\n");
 		k_printf("clear   -- Clears the screen\n");
+		k_printf("ls	  -- list all files (ls (with space after))\n");
 	}
 	else if (k_strncmp(buf, "clear", 5) == 0){
 		fb_clr(tty_current->bg);
@@ -29,11 +46,15 @@ void shell_execute(){
 		k_printf("SHELL: kShell\n");
 		k_printf("VERSION: 0.1.x\n");
 	}
+	else if (k_strncmp(buf, "ls ", 3)){
+		ls_root();
+	}
 	else {
 		k_printf("INVALID CMD %s\n", buf);
 		k_printf("TYPE 'help' TO LIST CMDS\n");
 	}
 }
+
 void shell_prompt(){
 	k_memset(buf, 0, 1024);
 	k_puts("KERNEL > ", STDOUT);

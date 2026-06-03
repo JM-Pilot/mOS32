@@ -6,6 +6,7 @@
 #include "console/tty.h"
 #include "shell/shell.h"
 #include "drivers/disk/ata.h"
+#include "fs/fat32.h"
 void kernel_main(multiboot_info_t *mb_info){
 	kernel_init(mb_info);
 	
@@ -14,7 +15,6 @@ void kernel_main(multiboot_info_t *mb_info){
 		shell_execute();
 	}
 }
-
 void hcf(){
 	asm volatile ("cli");
 	for (;;)

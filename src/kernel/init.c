@@ -45,7 +45,7 @@ void kernel_init(multiboot_info_t *mb_info){
 	k_puts("[SYS] 		PAGING Initialized\n", STDOUT);
 
 	heap_init(&k_heap);
-	for (int i = 0; i < 256; i++) {
+	for (int i = 0; i < 512; i++) {
 		uint32_t heap_phys = pmm_alloc();
 		vmm_map_page((void*)heap_phys, (void*)(0x500000 + i*4096), 3);
 		heap_add_block(&k_heap, 0x500000 + i*4096, 4096, 16);

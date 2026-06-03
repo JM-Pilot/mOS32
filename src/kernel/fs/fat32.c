@@ -1,9 +1,10 @@
+/* MIT LICENSE (C) 2026 JM-Pilot */
 #include <stdint.h>
 #include "fat32.h"
 #include "../drivers/disk/ata.h"
 #include <libk/stdio.h>
 #include <libk/stdlib.h>
-
+#include <libk/string.h>
 struct fat32_info fat_info;
 void fat32_init(){
 	uint8_t *buf = kmalloc(512);
@@ -22,6 +23,9 @@ void fat32_init(){
 	fat_info.first_data_sect = bpb.rsvd_sect_count + (bpb.num_fats
 		* fat_info.fat_size);
 
+	fat_info.total_sect = (bpb.total_sects_16 == 0)? bpb.total_sects_32 :
+		bpb.total_sects_16;
+	
 	kfree(buf);
 }
 
@@ -49,7 +53,7 @@ uint32_t fat32_next_clust(uint32_t cluster){
 }
 
 void fat32_read_file(uint32_t cluster, char *buf){
-	while (cluster <= 0x0FFFFFF8){
+	while (cluster < 0x0FFFFFF8){
 		uint32_t lba = fat32_cluster_to_lba(cluster);
 		ata_read(lba, 1, 0, (uint16_t*)buf);
 		buf += fat_info.bytes_per_sect;
@@ -57,84 +61,90 @@ void fat32_read_file(uint32_t cluster, char *buf){
 	}
 }
 
-/* THESE FUNCTIONS ARE BROKEN, TODO: FIX THIS */
-/*
-void fat32_write_file(uint32_t cluster, char *buf, uint32_t size){
-	uint32_t bytes_written = 0;
-	uint32_t bps = fat_info.bytes_per_sect;
-	uint32_t spc = fat_info.sects_per_clust;
-	uint32_t bpc = bps * spc;
-	uint32_t current_clust = cluster;
-	uint32_t next_clust;
+void fat32_write_file(char *file_name, char *buf, uint32_t size){
+	uint32_t free_clust = fat32_find_free_clust();
+	uint32_t lba = fat32_cluster_to_lba(free_clust);
+	uint32_t fat_sect = fat_info.rsvd_sect_count + (free_clust * 4) /
+			    fat_info.bytes_per_sect;
+	uint32_t offset = (free_clust * 4) % fat_info.bytes_per_sect;
 
-	while (bytes_written < size){
-		uint32_t lba = fat32_cluster_to_lba(current_clust);
-		uint32_t to_write = (size - bytes_written > bpc) ?
-			bpc : (size - bytes_written);
-		ata_write(lba, spc, 0, (uint16_t*)(buf + bytes_written));
+	ata_write(lba, 1, 0, (uint16_t*)buf);
+	uint32_t *tmp_buf = kmalloc(512);
+	ata_read(fat_sect, 1, 0, (uint16_t*)tmp_buf);
 
-		bytes_written += to_write;
-        
-		if (bytes_written < size) {
-			next_clust=  fat32_find_free_cluster();
-			fat32_set_fat_entry(current_clust, next_clust);
-			current_clust = next_clust;
-		} else {
-			fat32_set_fat_entry(current_clust, 0x0FFFFFF8);
+	*(uint32_t*)((uint8_t*)tmp_buf + offset) = 0x0FFFFFFF;
+	ata_write(fat_sect, 1, 0, (uint16_t*)tmp_buf);
+	kfree(tmp_buf);
+
+
+	struct fat32_dir_entry *entry = fat32_read_dir(fat32_cluster_to_lba(
+		fat_info.root_clust));
+	
+	for (int i = 0; i < 512 / 32; i++){
+		if (entry[i].filename[0] == 0x0){
+			entry[i].size = size;
+			entry[i].clust_high = (free_clust >> 16) & 0xFFFF;
+			entry[i].clust_low = free_clust & 0xFFFF;
+			entry[i].attribute = 0x20;
+			entry[i].creation_date = 0;
+			entry[i].creation_time = 0;
+			entry[i].creation_time_th = 0;
+			k_memcpy(entry[i].filename, file_name, 11);
+			entry[i].last_accessed = 0;
+			entry[i].last_mod_date = 0;
+			entry[i].last_mod_time = 0;
+			entry[i].ntrsvd = 0;
+			break;
 		}
 	}
+	uint32_t dir_lba = fat32_cluster_to_lba(fat_info.root_clust);
+	ata_write(dir_lba, 1, 0, (uint16_t*)entry);
+	kfree(entry);
 }
 
-uint32_t fat32_find_free_cluster() {
-	uint32_t bps = fat_info.bytes_per_sect;
-	uint32_t fat_size = fat_info.fat_size;
-	uint32_t rsvd = fat_info.rsvd_sect_count;
-	uint32_t entries_per_sector = bps / 4;
-	
-	for (uint32_t fat_sect = 0; fat_sect < fat_size; fat_sect++) {
-		uint8_t *buf = kmalloc(512);
-		ata_read(rsvd + fat_sect, 1, 0, (uint16_t*)buf);
-		
-		for (uint32_t i = 0; i < entries_per_sector; i++) {
-			uint32_t cluster = fat_sect * entries_per_sector + i;
-			if (cluster < 2) continue;
-			
-			uint32_t entry = *(uint32_t*)(buf + i * 4) & 0x0FFFFFFF;
-			if (entry == 0) {
-				kfree(buf);
-				return cluster;
-			}
+uint32_t fat32_find_free_clust(){
+	uint32_t max = (fat_info.total_sect - fat_info.first_data_sect) / fat_info.sects_per_clust + 2;
+	uint8_t *buf = kmalloc(512);
+	for (uint32_t clust = 2; clust < max; clust++){
+		uint32_t fat_sect = fat_info.rsvd_sect_count + (clust * 4) / fat_info.bytes_per_sect;
+		uint32_t offset = (clust * 4) % fat_info.bytes_per_sect;
+		if (offset == 0)
+			ata_read(fat_sect, 1, 0, (uint16_t*)buf);
+		if (*(uint32_t*)(buf + offset) == 0x0) {
+			kfree(buf);
+			return clust;
 		}
-		kfree(buf);
 	}
+	kfree(buf);
 	return 0;
 }
 
-uint32_t fat32_get_fat_entry(uint32_t cluster) {
-	uint32_t rsvd = fat_info.rsvd_sect_count;
-	uint32_t bps = fat_info.bytes_per_sect;
-	uint32_t fat_sect = rsvd + (cluster * 4) / bps;
-	uint32_t offset = (cluster * 4) % bps;
-	uint8_t *buf = kmalloc(512);
-	ata_read(fat_sect, 1, 0, (uint16_t*)buf);
-	uint32_t entry = *(uint32_t*)(buf + offset) & 0x0FFFFFFF;
-	kfree(buf);
-	return entry;
+
+uint8_t fat32_lfn_checksum(uint8_t *short_name) {
+	uint8_t sum = 0;
+	for (int i = 11; i; i--)
+		sum = ((sum & 1) << 7) + (sum >> 1) + *short_name++;
+	return sum;
 }
 
-void fat32_set_fat_entry(uint32_t cluster, uint32_t value) {
-	uint32_t rsvd = fat_info.rsvd_sect_count;
-	uint32_t bps = fat_info.bytes_per_sect;
-	uint32_t fat_sect = rsvd + (cluster * 4) / bps;
-	uint32_t offset = (cluster * 4) % bps;
-	uint8_t *buf = kmalloc(512);
-	
-	ata_read(fat_sect, 1, 0, (uint16_t*)buf);
-	
-	uint32_t *entry = (uint32_t*)(buf + offset);
-	*entry = (*entry & 0xF0000000) | (value & 0x0FFFFFFF);
-	
-	ata_write(fat_sect, 1, 0, (uint16_t*)buf);
-	kfree(buf);
+/* LFN so hard :sob: */
+/* Im too lazy to download emoji on my system ;)*/
+void fat32_conv_lf2sf(const char *long_name, char *short_name){
+	k_memset(short_name, ' ', 11);
+	int i = 0, j = 0;
+	while (long_name[i] && long_name[i] != '.' && j < 6){
+		short_name[j++] = long_name[i++] >= 'a' ? long_name[i++] - 32 : 
+			long_name[i++];
+	}
+
+	short_name[6] = '~';
+	short_name[7] = '1';
+	while (long_name[i] && long_name[i] != '.') i++;
+	if (long_name[i] == '.') i++;
+	j = 8;
+	while (long_name[i] && j < 11){
+		short_name[j++] = long_name[i++] >= 'a' ? long_name[i++] - 32 : 
+			long_name[i++];
+	}
+		
 }
-*/

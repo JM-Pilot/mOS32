@@ -1,3 +1,4 @@
+/* MIT LICENSE (C) 2026 JM-Pilot */
 #include <stdint.h>
 #include "../../arch/x86/asm.h"
 

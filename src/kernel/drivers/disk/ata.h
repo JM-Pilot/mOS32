@@ -1,3 +1,4 @@
+/* MIT LICENSE (C) 2026 JM-Pilot */
 #include <stdint.h>
 #ifndef ATA_H
 #define ATA_H

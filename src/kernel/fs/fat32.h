@@ -1,3 +1,4 @@
+/* MIT LICENSE (C) 2026 JM-Pilot */
 #include <stdint.h>
 #ifndef FAT32_H
 #define FAT32_H
@@ -47,6 +48,7 @@ struct fat32_info {
 	uint32_t fat_size;
 	uint32_t first_data_sect;
 	uint32_t root_clust;
+	uint32_t total_sect;
 };
 
 struct fat32_dir_entry {
@@ -63,6 +65,17 @@ struct fat32_dir_entry {
 	uint16_t clust_low;
 	uint32_t size;
 }__attribute__((packed));
+
+struct fat32_long_file_name {
+	uint8_t order;
+	uint16_t first_bytes[5];
+	uint8_t attributes;
+	uint8_t le_type;	/* Long entry type, * le type * sounds french*/
+	uint8_t checksum;
+	uint16_t next_bytes[6];
+	uint16_t zero;
+	uint16_t final_bytes[2];
+}__attribute__((packed));
 extern struct fat32_info fat_info;
 void fat32_init();
 uint32_t fat32_cluster_to_lba(uint32_t cluster);
@@ -70,11 +83,8 @@ struct fat32_dir_entry *fat32_read_dir(uint32_t lba);
 uint32_t fat32_next_clust(uint32_t cluster);
 void fat32_read_file(uint32_t cluster, char *buf);
 
-/* THESE FUNCTIONS ARE BROKEN, TODO: FIX THIS */
-/*
-void fat32_write_file(uint32_t cluster, char *buf, uint32_t size);
-uint32_t fat32_find_free_cluster();
-uint32_t fat32_get_fat_entry(uint32_t cluster);
-void fat32_set_fat_entry(uint32_t cluster, uint32_t value);
-*/
+void fat32_write_file(char *file_name, char *buf, uint32_t size);
+uint32_t fat32_find_free_clust();
+
+uint8_t fat32_lfn_checksum(uint8_t *short_name);
 #endif
