@@ -148,3 +148,17 @@ void fat32_conv_lf2sf(const char *long_name, char *short_name){
 	}
 		
 }
+
+struct fat32_dir_entry *fat32_find_file(const char *filename) {
+	struct fat32_dir_entry *dir = fat32_read_dir(
+		fat32_cluster_to_lba(fat_info.root_clust)
+	);
+	for (int i = 0; i < 512 / 32; i++) {
+		if (dir[i].filename[0] == 0x00) break;
+		if (dir[i].filename[0] == 0xE5) continue;
+		if (k_memcmp(dir[i].filename, filename, 11) == 0)
+		return &dir[i];
+	}
+	kfree(dir);
+	return 0;
+}

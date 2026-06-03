@@ -87,4 +87,6 @@ void fat32_write_file(char *file_name, char *buf, uint32_t size);
 uint32_t fat32_find_free_clust();
 
 uint8_t fat32_lfn_checksum(uint8_t *short_name);
+
+struct fat32_dir_entry *fat32_find_file(const char *filename);
 #endif
