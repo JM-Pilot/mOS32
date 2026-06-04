@@ -55,8 +55,8 @@ void tty_write_char(char c){
 
 	psf1_render_char(c, x, y, 
 		tty_current->fg, tty_current->bg);
-
-	if ((uint64_t)(tty_current->cursor_x++) > MAX_CELLS_X){
+	
+	if ((uint64_t)(++tty_current->cursor_x) >= MAX_CELLS_X){
 		tty_current->cursor_y++;
 		tty_current->cursor_x = 0;
 		if ((uint64_t)tty_current->cursor_y >= MAX_CELLS_Y){

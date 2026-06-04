@@ -56,7 +56,7 @@ void shell_execute(){
 void shell_prompt(){
 	k_memset(buf, 0, sizeof(buf));
 	k_puts("KERNEL > ", STDOUT);
-	tty_read(buf, sizeof(buf));
+	k_gets(buf, sizeof(buf));
 	k_putc('\n', STDOUT);
 }
 

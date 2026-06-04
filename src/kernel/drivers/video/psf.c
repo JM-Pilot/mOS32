@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "../../kernel.h"
 
-extern char _binary_src_kernel_misc_ter_u16n_psf_start;
+extern uint8_t _binary_src_kernel_misc_ter_u16n_psf_start[];
 struct PSF1_font *font_main;
 
 void psf1_load(){
