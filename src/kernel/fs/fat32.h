@@ -83,6 +83,8 @@ struct fat32_dir_entry *fat32_read_dir(uint32_t lba);
 uint32_t fat32_next_clust(uint32_t cluster);
 void fat32_read_file(uint32_t cluster, char *buf);
 
+
+void fat32_override_data_file(char *filename, char *buf, uint32_t size);
 void fat32_write_file(char *file_name, char *buf, uint32_t size);
 uint32_t fat32_find_free_clust();
 

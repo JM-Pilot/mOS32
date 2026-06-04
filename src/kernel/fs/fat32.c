@@ -102,6 +102,30 @@ void fat32_write_file(char *file_name, char *buf, uint32_t size){
 	kfree(entry);
 }
 
+void fat32_override_data_file(char *filename, char *buf, uint32_t size){
+	struct fat32_dir_entry *dir = fat32_read_dir(fat32_cluster_to_lba(fat_info.root_clust));
+
+	for (int i = 0; i < 512 / 32; i++){
+		if (k_memcmp(dir[i].filename, "HELLO   TXT", 11) == 0){
+			uint32_t cluster = dir[i].clust_low | (dir[i].clust_high << 16);
+			uint32_t offset = 0;
+			
+			while (offset < size && cluster < 0x0FFFFFF8){
+				uint32_t lba = fat32_cluster_to_lba(cluster);
+				ata_write(lba, 1, 0, (uint16_t*)(buf + offset));
+				offset += fat_info.bytes_per_sect;
+				cluster = fat32_next_clust(cluster);
+			}
+			
+			dir[i].size = size;
+			break;
+		}
+	}
+
+	ata_write(fat32_cluster_to_lba(fat_info.root_clust), 1, 0, (uint16_t*)dir);
+	kfree(dir);
+}
+
 uint32_t fat32_find_free_clust(){
 	uint32_t max = (fat_info.total_sect - fat_info.first_data_sect) / fat_info.sects_per_clust + 2;
 	uint8_t *buf = kmalloc(512);
