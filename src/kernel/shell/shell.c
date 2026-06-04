@@ -46,9 +46,9 @@ void shell_execute(){
 		k_printf("SHELL: kShell\n");
 		k_printf("VERSION: 0.1.x\n");
 	}
-	else if (k_strncmp(buf, "ls ", 3)){
+	else if (k_strncmp(buf, "ls", 2) == 0){
 		ls_root();
-	}
+	} 
 	else {
 		k_printf("INVALID CMD %s\n", buf);
 		k_printf("TYPE 'help' TO LIST CMDS\n");
@@ -56,7 +56,7 @@ void shell_execute(){
 }
 
 void shell_prompt(){
-	k_memset(buf, 0, 1024);
+	k_memset(buf, 0, sizeof(buf));
 	k_puts("KERNEL > ", STDOUT);
 	tty_read(buf, 1023);
 	k_putc('\n', STDOUT);
