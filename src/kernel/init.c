@@ -20,6 +20,7 @@
 #include "drivers/disk/ata.h"
 #include <libk/stdlib.h>
 #include <libk/string.h>
+#include "shell/shell.h"
 heap_bm_t k_heap;
 
 void kernel_init(multiboot_info_t *mb_info){
@@ -59,4 +60,5 @@ void kernel_init(multiboot_info_t *mb_info){
 
 	k_puts("Welcome to mOS32, you will be presented into a kernel shell\n",
 	STDOUT);
+	shell_init();
 }

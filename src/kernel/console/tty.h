@@ -27,4 +27,5 @@ int tty_read(char *buf, int n);
 
 void tty_scroll_up();
 
+void tty_clr_and_reset(struct tty *t);
 #endif

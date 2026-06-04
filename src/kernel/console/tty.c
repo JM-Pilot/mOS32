@@ -90,3 +90,9 @@ void tty_scroll_up(){
 	k_memset(addr + fb_main.pitch * fb_main.height - line, 0, line);
 	tty_current->cursor_y -= 1;
 }
+
+void tty_clr_and_reset(struct tty *t){
+	fb_clr(tty_current->bg);
+	tty_init(t, tty_current->fg, tty_current->bg);
+	tty_set_current(t);
+}

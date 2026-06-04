@@ -30,12 +30,10 @@ void shell_execute(){
 		k_printf("help    -- Give information and list all cmds\n");
 		k_printf("sysinfo -- Give information about the system\n");
 		k_printf("clear   -- Clears the screen\n");
-		k_printf("ls	  -- list all files (ls (with space after))\n");
+		k_printf("ls	  -- list all files\n");
 	}
 	else if (k_strncmp(buf, "clear", 5) == 0){
-		fb_clr(tty_current->bg);
-		tty_init(&tty_main, tty_current->fg, tty_current->bg);
-		tty_set_current(&tty_main);
+		tty_clr_and_reset(&tty_main);
 	}
 	else if (k_strncmp(buf, "sysinfo", 8) == 0){
 		k_printf("myOS32\n");
@@ -58,6 +56,11 @@ void shell_execute(){
 void shell_prompt(){
 	k_memset(buf, 0, sizeof(buf));
 	k_puts("KERNEL > ", STDOUT);
-	tty_read(buf, 1023);
+	tty_read(buf, sizeof(buf));
 	k_putc('\n', STDOUT);
+}
+
+void shell_init(){
+	tty_clr_and_reset(&tty_main);
+	k_puts("Welcome to mOS32 Shell!\n", STDOUT);
 }
