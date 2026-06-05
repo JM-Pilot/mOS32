@@ -7,13 +7,19 @@
 #include "shell/shell.h"
 #include "drivers/disk/ata.h"
 #include "fs/fat32.h"
+#include "sched/sched.h"
+#include <libk/stdlib.h>
+
+
+	
 void kernel_main(multiboot_info_t *mb_info){
 	kernel_init(mb_info);
-	
 	while (1){
 		shell_prompt();
 		shell_execute();
 	}
+	
+	hcf();
 }
 void hcf(){
 	asm volatile ("cli");

@@ -21,6 +21,7 @@
 #include <libk/stdlib.h>
 #include <libk/string.h>
 #include "shell/shell.h"
+#include "sched/sched.h"
 heap_bm_t k_heap;
 
 void kernel_init(multiboot_info_t *mb_info){
@@ -45,6 +46,8 @@ void kernel_init(multiboot_info_t *mb_info){
 	paging_init((uint32_t)fb_main.addr);
 	k_puts("[SYS]          PAGING Initialized\n", STDOUT);
 
+	sched_init();
+	k_puts("[SYS]          SCHED Initialized\n", STDOUT);
 	heap_init(&k_heap);
 	for (int i = 0; i < 512; i++) {
 		uint32_t heap_phys = pmm_alloc();

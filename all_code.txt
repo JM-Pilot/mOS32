@@ -1,0 +1,1396 @@
+/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <libk/stdio.h>
+#include <stddef.h>
+#include "../kernel/console/tty.h"
+void k_putc(char c, int fd){
+	if (fd == STDOUT){
+		tty_write_char(c);
+	}
+}
+void k_puts(const char *s, int fd){
+	for (int i = 0; s[i] != '\0'; i++){
+		k_putc(s[i], fd);
+	}
+}
+
+char k_getc(){
+	char c[1];
+	tty_read(c, 1);
+	return c[0];
+}
+void k_gets(char *buf, size_t size){
+	tty_read(buf, size);
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <libk/stdlib.h>
+#include <stdint.h>
+#include "../kernel/kernel.h"
+#include "../kernel/mm/heap.h"
+char *k_itoa(char *buf, int val, int base){
+	if (base == BASE_DEC){
+		int i, sign;
+		char tmp_buffer[10];
+		if ((sign = val) < 0){
+			val = -val;
+		}
+		i = 0;
+		do {
+			tmp_buffer[i++] = val % 10 + '0';
+		} while ((val /= 10) > 0);
+
+		if (sign < 0){
+			tmp_buffer[i++] = '-';
+		}
+		int j = 0;
+		while (i--) 
+			buf[j++] = tmp_buffer[i];
+		buf[j++] = '\0';
+	} else if (base == BASE_HEX){
+		char hex_val[] = "0123456789ABCDEF";
+		char tmp_buffer[10]; 
+		int i, j;
+		for (i = 0; i < 8; i++) {
+			tmp_buffer[i] = hex_val[val & 0x0F];
+			val >>= 4;
+		}
+		tmp_buffer[i++] = 'x';
+		tmp_buffer[i++] = '0';
+		j = 0;
+		while (i--)
+			buf[j++] = tmp_buffer[i];
+		buf[j++] = '\0';
+	} else if (base == BASE_BIN){
+		char tmp_buffer[34]; 
+		int i, j;
+		for (i = 0; i <= 32; i++) {
+			tmp_buffer[i] = '0' + (val & 0x01);
+			val >>= 1;
+		}
+		tmp_buffer[i++] = 'b';
+		tmp_buffer[i++] = '0';
+		j = 0;
+		while (i--)
+			buf[j++] = tmp_buffer[i];
+		buf[j++] = '\0';
+	}
+	return buf;
+}
+
+void *kmalloc(uint32_t size) { 
+	return heap_alloc(&k_heap, size); 
+}
+void kfree(void *ptr) { 
+	heap_free(&k_heap, ptr);
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <stdint.h>
+#include <stdarg.h>
+#include <libk/stdio.h>
+#include <libk/stdlib.h>
+#include "../kernel/console/tty.h"
+void k_vsprintf(char *buf, const char *fmt, va_list args){
+	int i = 0;
+	while (*fmt){
+		if (*fmt == '%'){
+			fmt++;
+			switch (*fmt){
+				case 'c': {
+					buf[i++] = (char)va_arg(args, int);
+					break;
+				}
+				case 'd': {
+					char tmp[10];
+					k_itoa(tmp, va_arg(args, int), 
+						BASE_DEC);
+					for (int j = 0; tmp[j] != '\0'; j++)
+						buf[i++] = tmp[j];
+					break;
+				}
+				case 'x': {
+					char tmp[10];
+					k_itoa(tmp, va_arg(args, uint32_t), 
+						BASE_HEX);
+					for (int j = 0; tmp[j] != '\0'; j++)
+						buf[i++] = tmp[j];
+					break;
+				}
+				case 's': {
+					const char *s = va_arg(args, 
+						const char*);
+					while (*s) 
+						buf[i++] = *s++;
+					break;
+				}
+				case 'u': {
+					char tmp[10];
+					k_itoa(tmp, va_arg(args, uint32_t), 
+						BASE_DEC);
+					for (int j = 0; tmp[j] != '\0'; j++)
+						buf[i++] = tmp[j];
+					break;
+				}
+				default: {
+					buf[i++] = *fmt;
+					break;
+				}
+			}
+		} else {
+			buf[i++] = *fmt;
+		}
+		fmt++;
+	}
+	buf[i++] = '\0';
+}
+void k_printf(const char *fmt, ...){
+	va_list args;
+	va_start(args, fmt);
+	char buffer[2048];
+	k_vsprintf(buffer, fmt, args);
+	va_end(args);
+	k_puts(buffer, STDOUT);
+}
+/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <stdint.h>
+#include <stddef.h>
+#include <libk/string.h>
+
+void *k_memset(void *dest, int val, size_t len){
+	uint8_t *ptr = (uint8_t*)dest;
+	while (len--)
+		*ptr++ = val;
+	return dest;
+}
+
+void *k_memcpy(void *dest, const void *src, size_t len){
+	uint8_t *d = (uint8_t*)dest;
+	uint8_t *s = (uint8_t*)src;
+	while (len--){
+		*d++ = *s++;
+	}
+	return dest;
+}
+
+void *k_memmove(void *dest, void *src, size_t len){
+	char *d = dest;
+	char *s = src;
+	if (d < s){
+		while (len--)
+			*d++ = *s++;
+	} else {
+		char *lasts = s + (len - 1);
+		char *lastd = d + (len - 1);
+		while (len--)
+			*lastd++ = *lasts++;
+	}
+	return dest;
+}
+
+int k_memcmp(const void *a, const void *b, size_t count){
+	const uint8_t *a1 = a;
+	const uint8_t *b1 = b;
+	while (count--){
+		if (*a1++ != *b1++)
+			return a1[-1] < b1[-1] ? -1 : 1;
+	}
+	return 0;
+}
+
+/* Old GLIBC harder to make it work here */
+int k_strcmp(const char *p1, const char *p2) {
+	const uint8_t *s1 = (const uint8_t *) p1;
+	const uint8_t *s2 = (const uint8_t *) p2;
+	uint8_t c1, c2;
+
+	do {
+		c1 = (uint8_t) *s1++;
+		c2 = (uint8_t) *s2++;
+		if (c1 == '\0')
+			return c1 - c2;
+	}
+	while (c1 == c2);
+
+	return c1 - c2;
+}
+int k_strncmp(const char *s1, const char *s2, size_t n) {
+	uint8_t u1, u2;
+
+	while (n--) {
+		u1 = (uint8_t) *s1++;
+		u2 = (uint8_t) *s2++;
+		if (u1 != u2)
+			return u1 - u2;
+		if (u1 == '\0')
+			return 0;
+	}
+	return 0;
+}
+
+char *k_strcpy(char *dest, const char *src){
+	if(dest == NULL)
+		return NULL;
+	char *ptr = dest;
+	while(*src != '\0'){
+		*dest = *src;
+		dest++;
+		src++;
+	}
+	*dest = '\0';
+	return ptr;
+}#include "../arch/x86/asm.h"
+#include "sched.h"
+#include <stdint.h>
+#include <libk/stdlib.h>
+#include <stddef.h>
+#include <libk/string.h>
+
+#define MAX_TASKS 16
+struct task tasks[MAX_TASKS];
+int tasks_count;
+
+void sched_init(){
+	tasks_count = 0;
+}
+void sched_add_task(struct task *t){
+	if (tasks_count < MAX_TASKS){
+		tasks[tasks_count++] =  *t;
+	}
+}
+void sched_remove_dead(){
+	for (int i = 0; i < tasks_count; i++){
+		if (tasks[i].state == TASK_DEAD){
+			for (int j = i; j < tasks_count - 1; j++){
+				tasks[j] = tasks[j + 1];
+			}
+			tasks_count--;
+			i--;
+		}
+	}
+}
+struct task *task_add(void (*entry)(void), void *stack){
+	struct task *t = kmalloc(sizeof(struct task));
+	t->state = TASK_ALIVE;
+	k_memset(&t->reg, 0, sizeof(t->reg));
+	t->reg.eip = (uint32_t)entry;
+	t->reg.esp = (uint32_t)stack;
+	t->reg.eflags = 0x202;
+	return t;
+}
+
+void task_start(struct task *t){
+	sched_add_task(t);
+}
+
+int current_task_index = 0;
+
+struct task* sched_next(){
+	int tries = 0;
+	
+	while (tries < tasks_count){
+		struct task *t = &tasks[current_task_index];
+		current_task_index = (current_task_index + 1) % tasks_count;
+		
+		if (t->state == TASK_ALIVE){
+			return t;
+		}
+		tries++;
+	}
+	
+	return NULL;
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include "timer.h"
+#include "../arch/x86/irq.h"
+#include "../arch/x86/asm.h"
+#include "../arch/x86/idt.h"
+#include <libk/stdio.h>
+#include "../sched/sched.h"
+
+void timer_phase(int hz){
+	int divisor = 1193180 / hz;
+	outb(0x43, 0x36);
+	outb(0x40, divisor & 0xFF);
+	outb(0x40, divisor >> 8);
+}
+
+int ticks = 0;
+
+struct task *current_task = NULL;
+void irq0_handler(struct register_frame *r){
+	ticks++;
+	if (current_task != NULL){
+		current_task->state = TASK_ALIVE;
+	}
+	current_task = sched_next();
+	if (current_task != NULL){
+		asm_restore_registers(&current_task->reg);
+	}
+}
+
+int timer_get_ticks(){
+	return ticks;
+}
+
+void timer_init(){
+	timer_phase(100);
+	irq_install_handler(0, irq0_handler);
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include "ps2.h"
+#include "../../arch/x86/irq.h"
+#include "../../arch/x86/asm.h"
+#include "../../arch/x86/idt.h"
+#include <libk/stdio.h>
+#include "../../console/tty.h"
+#include <stdbool.h>
+
+char kbdus[128] = {
+	0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
+	'\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
+	0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',
+	0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0,
+	'*', 0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '-',
+	0, 0, 0, '+', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+char kbdus_shift[128] = {
+	0, 27, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',
+	'\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',
+	0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~',
+	0, '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0,
+	'*', 0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '-',
+	0, 0, 0, '+', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+
+volatile char key_pressed = 0;
+bool is_shift = false;
+void irq1_handler(struct register_frame *r){
+	uint8_t scancode = inb(0x60);
+	if (scancode == 0x2A || scancode == 0x36) is_shift = true;
+    	if (scancode == 0xAA || scancode == 0xB6) is_shift = false;
+	if (scancode & 0x80){
+	} else {
+		if (is_shift){
+			key_pressed = kbdus_shift[scancode];
+			return;
+		}
+		key_pressed = kbdus[scancode];		
+	}
+}
+
+char ps2_getch(){
+	while (key_pressed == 0);
+	char c = key_pressed;
+	key_pressed = 0;
+	return c;
+}
+void ps2_init(){
+	irq_install_handler(1, irq1_handler);
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <boot/multiboot.h>
+#include <stdint.h>
+#include "framebuffer.h"
+
+struct framebuffer fb_main;
+void fb_init(multiboot_info_t *mb_info){
+	fb_main.addr = (uint32_t*)(uintptr_t)mb_info->framebuffer_addr;
+	fb_main.width = mb_info->framebuffer_width;
+	fb_main.height = mb_info->framebuffer_height;
+	fb_main.pitch = mb_info->framebuffer_pitch;
+	fb_main.bpp = mb_info->framebuffer_bpp;
+}
+
+void fb_plot_pixel(uint32_t color, int x, int y){
+	fb_main.addr[y * (fb_main.pitch / 4) + x] = color;
+}
+
+void fb_clr(uint32_t col){
+	for (uint32_t i = 0; i < fb_main.height; i++)
+		for (uint32_t j = 0; j < fb_main.width; j++)
+			fb_plot_pixel(col, j, i);	
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include "psf.h"
+#include "framebuffer.h"
+#include <stdint.h>
+#include "../../kernel.h"
+
+extern uint8_t _binary_src_kernel_misc_ter_u16n_psf_start[];
+struct PSF1_font *font_main;
+
+void psf1_load(){
+	font_main = (struct PSF1_font*)&
+	_binary_src_kernel_misc_ter_u16n_psf_start;
+
+	if (font_main->magic != PSF1_FONT_MAGIC)
+		hcf();
+}
+void psf1_render_char(uint8_t c, int x, int y, uint32_t fg, uint32_t bg){
+	uint8_t bpg = ((MAIN_FONT_WIDTH + 7) / 8) * MAIN_FONT_HEIGHT;
+	uint8_t *glyph = (uint8_t*)&
+	_binary_src_kernel_misc_ter_u16n_psf_start + 4 +
+	c * bpg;
+
+	for (uint8_t gy = 0; gy < MAIN_FONT_HEIGHT; gy++){
+		uint8_t byte = glyph[gy];
+		for (uint8_t gx = 0; gx < MAIN_FONT_WIDTH; gx++){
+			if (byte & (0x80 >> gx))
+				fb_plot_pixel(fg, x + gx, y + gy);
+			else
+				fb_plot_pixel(bg, x + gx, y + gy);
+		}
+	}
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <stdint.h>
+#include "../../arch/x86/asm.h"
+
+void ata_read(uint32_t lba, uint8_t count, uint8_t slave, uint16_t *buf){
+	outb(0x1F6, 0xE0 | (slave << 4) | ((lba >> 24) & 0x0F));
+	outb(0x1F1, 0x00);
+	outb(0x1F2, count);
+	outb(0x1F3, (uint8_t)lba);
+	outb(0x1F4, (uint8_t)(lba >> 8));
+	outb(0x1F5, (uint8_t)(lba >> 16));
+	outb(0x1F7, 0x20);
+
+	for (int i = 0; i < count; i++){
+		while (inb(0x1F7) & 0x80);
+		for (int j = 0; j < 256; j++){
+			buf[i * 256 + j] = inw(0x1F0);
+		}
+	}
+}
+
+/* Same thing as ata_read with minimal changes wow */
+
+void ata_write(uint32_t lba, uint8_t count, uint8_t slave, uint16_t *buf){
+	outb(0x1F6, 0xE0 | (slave << 4) | ((lba >> 24) & 0x0F));
+	outb(0x1F1, 0x00);
+	outb(0x1F2, count);
+	outb(0x1F3, (uint8_t)lba);
+	outb(0x1F4, (uint8_t)(lba >> 8));
+	outb(0x1F5, (uint8_t)(lba >> 16));
+	outb(0x1F7, 0x30);
+	for (int i = 0; i < count; i++){
+		while (inb(0x1F7) & 0x80);
+		for (int j = 0; j < 256; j++){
+			outw(0x1F0, buf[i * 256 + j]);
+		}
+	}
+	outb(0x1F7, 0xE7);
+	while (inb(0x1F7) & 0x80);
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include "stdint.h"
+#include <stddef.h>
+#include "tty.h"
+#include "../drivers/video/psf.h"
+#include "../drivers/video/framebuffer.h"
+#include "../drivers/input/ps2.h"
+#include <libk/stdio.h>
+#include <libk/string.h>
+struct tty tty_main;
+struct tty *tty_current;
+
+void tty_init(struct tty *t, uint32_t fg, uint32_t bg) {
+	t->cursor_x = 0;
+	t->cursor_y = 0;
+	t->fg = fg;
+	t->bg = bg;
+
+	fb_clr(bg);
+}
+void tty_set_current(struct tty *t){
+	tty_current = t;
+}
+
+#define MAX_CELLS_X (fb_main.width / MAIN_FONT_WIDTH)
+#define MAX_CELLS_Y (fb_main.height / MAIN_FONT_HEIGHT)
+void tty_write_char(char c){
+	switch (c){
+		case '\n':
+			tty_current->cursor_x = 0;
+			tty_current->cursor_y++;
+			if ((uint64_t)tty_current->cursor_y >= MAX_CELLS_Y){
+				tty_scroll_up();
+			}
+			return;
+		case '\r':
+			tty_current->cursor_x = 0;
+			return;
+		case '\b':
+			if (tty_current->cursor_x == 0) return;
+			tty_current->cursor_x--;
+			tty_write_char(' ');
+			tty_current->cursor_x--;
+			return;
+		case '\t':
+			if ((uint64_t)tty_current->cursor_x + 4 >= MAX_CELLS_X){
+				tty_write_char('\n');
+				return;
+			}
+			tty_current->cursor_x += 4;
+			return; 
+	}
+	int x = tty_current->cursor_x * MAIN_FONT_WIDTH;
+	int y = tty_current->cursor_y * MAIN_FONT_HEIGHT;
+
+	psf1_render_char(c, x, y, 
+		tty_current->fg, tty_current->bg);
+	
+	if ((uint64_t)(++tty_current->cursor_x) >= MAX_CELLS_X){
+		tty_current->cursor_y++;
+		tty_current->cursor_x = 0;
+		if ((uint64_t)tty_current->cursor_y >= MAX_CELLS_Y){
+			tty_scroll_up();
+		}
+	}
+}
+
+int tty_read(char *buf, int n){
+	int i = 0;
+	char c;
+	while (i < n && (c = ps2_getch()) != '\n'){
+		if (c == '\b'){
+			if (i > 0){
+				i--;
+				k_putc('\b', STDOUT);
+			} 
+			continue;
+		}
+		buf[i++] = c;
+		k_putc(c, STDOUT);
+	}
+	buf[i] = '\0';
+	return i;
+}
+
+void tty_scroll_up(){
+	uint8_t *addr = (uint8_t*)fb_main.addr;
+	uint32_t line = fb_main.pitch * MAIN_FONT_HEIGHT;
+	k_memmove(addr, addr + line, fb_main.pitch * fb_main.height - line);
+	k_memset(addr + fb_main.pitch * fb_main.height - line, 0, line);
+	tty_current->cursor_y -= 1;
+}
+
+void tty_clr_and_reset(struct tty *t){
+	fb_clr(tty_current->bg);
+	tty_init(t, tty_current->fg, tty_current->bg);
+	tty_set_current(t);
+}#include <stdint.h>
+#include "pmm.h"
+#include <boot/multiboot.h>
+#include <libk/stdio.h>
+#include <libk/string.h>
+uint32_t total_memory; 
+uint32_t total_pages;
+uint8_t *bitmap;
+
+extern char _kernel_end;
+extern char _kernel_start;
+
+void pmm_set_used(uint32_t addr){
+	uint32_t page = addr / 4096;
+	bitmap[page / 8] |= (1 << (page % 8));
+}
+
+void pmm_free(uint32_t addr) {
+	uint32_t page = addr / 4096;
+	bitmap[page / 8] &= ~(1 << (page % 8));
+}
+
+void pmm_alloc_region(uint32_t addr, uint32_t len){
+	uint32_t pages = len / 4096;
+	for (uint32_t i = 0; i < pages; i++){
+		pmm_set_used(addr + i * 4096);
+	}
+}
+void pmm_init(multiboot_info_t *mb_info){
+	/* gotta love the 80 char limit */
+	multiboot_memory_map_t *mmap = (multiboot_memory_map_t*)
+					mb_info->mmap_addr;
+
+	multiboot_memory_map_t *mmap_end = (multiboot_memory_map_t*) 
+			((uint32_t)mb_info->mmap_addr + mb_info->mmap_length);
+
+	/* Get size of total_memory*/
+	while (mmap < mmap_end){
+		if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
+			total_memory += mmap->len;
+		mmap = (multiboot_memory_map_t *) ((uint32_t)mmap + 
+					       mmap->size + sizeof(mmap->size));
+	}
+	total_pages = total_memory / 4096;
+	bitmap = (uint8_t*)&_kernel_end;
+	k_memset(bitmap, 0xFF, total_pages / 8);
+
+
+	mmap = (multiboot_memory_map_t*)mb_info->mmap_addr;
+	while (mmap < mmap_end){
+		if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE){
+			for (uint32_t i = 0; i < mmap->len / 4096; i++)
+    				pmm_free(mmap->addr + i * 4096);
+		}
+		mmap = (multiboot_memory_map_t*)((uint32_t)mmap + 
+			mmap->size + sizeof(mmap->size));
+	}
+	/* Ensure that the kernel region is protected */
+	pmm_alloc_region(0, 0x100000);
+	pmm_alloc_region((uint32_t)&_kernel_start, 
+		(uint32_t)&_kernel_end - (uint32_t)&_kernel_start);
+	pmm_alloc_region((uint32_t)bitmap, total_pages / 8);
+}
+
+uint32_t pmm_alloc(){
+	for (uint32_t i = 0; i < total_pages; i++){
+		if (!(bitmap[i / 8] & (1 << (i % 8)))){
+			bitmap[i / 8] |= (1 << (i % 8));
+			return i * 4096;
+		}
+	}
+	return 0;
+}
+
+uint32_t get_total_mem(){
+	return total_memory;
+}/*
+	2014 Leonard Kevin McGuire Jr (www.kmcg3413.net) (kmcg3413@gmail.com)
+	2016 Clément Gallet (provided bug fixes)
+	2026 JM-Pilot (github) (simplified the code and made it work on this kernel)
+*/
+#include <kernel/kernel.h>
+#include "heap.h"
+void heap_init(heap_bm_t *heap){
+	heap->fblock = 0;
+}
+int heap_add_block(heap_bm_t *heap, uintptr_t addr, uint32_t size, uint32_t blk_size){
+	heap_block_t 	*b; 
+	uint32_t 	blk_count;
+	uint32_t	x;
+	uint8_t		*bm;
+	
+	b = (heap_block_t*)addr;
+	b->size = size - sizeof(heap_block_t);
+	b->blk_size = blk_size;
+	
+	b->next = heap->fblock;
+	heap->fblock = b;
+
+	blk_count = b->size / b->blk_size;
+	bm = (uint8_t*)&b[1];
+
+	/* clear bitmap */
+	for (x = 0; x < blk_count; ++x) {
+			bm[x] = 0;
+	}
+	/* reserve room for bitmap */
+	blk_count = (blk_count / blk_size) * blk_size < blk_count ? blk_count / blk_size + 1 : blk_count / blk_size;
+	for (x = 0; x < blk_count; ++x) {
+			bm[x] = 5;
+	}
+	
+	b->lfb = blk_count - 1;
+	
+	b->used = blk_count;
+	
+	return 1;
+}
+uint8_t heap_get_next_id(uint8_t a, uint8_t b){
+	uint8_t	c;	
+	for (c = a + 1; c == b || c == 0; ++c);
+	return c;
+}
+void *heap_alloc(heap_bm_t *heap, uint32_t size){
+	heap_block_t	*b;
+	uint8_t		*bm;
+	uint32_t	bcnt;
+	uint32_t	x, y, z;
+	uint32_t	bneed;
+	uint8_t		nid;
+
+	/* iterate blocks */
+	for (b = heap->fblock; b; b = b->next) {
+		/* check if block has enough room */
+		if (b->size - (b->used * b->blk_size) >= size) {
+			
+			bcnt = b->size / b->blk_size;		
+			bneed = (size / b->blk_size) * b->blk_size < size ? size / b->blk_size + 1 : size / b->blk_size;
+			bm = (uint8_t*)&b[1];
+			/*						      | Error Here*/
+			/* for (x = (b->lfb + 1 >= bcnt ? 0 : b->lfb + 1); x < b->lfb; ++x) */
+			for (x = (b->lfb + 1 >= bcnt ? 0 : b->lfb + 1); x != b->lfb; ++x) {
+				/* just wrap around */
+				if (x >= bcnt) {
+					x = 0;
+				}		
+
+				if (bm[x] == 0) {	
+					/* count free blocks */
+					for (y = 0; bm[x + y] == 0 && y < bneed && (x + y) < bcnt; ++y);
+					
+					/* we have enough, now allocate them */
+					if (y == bneed) {
+						/* find ID that does not match left or right */
+						nid = heap_get_next_id(bm[x - 1], bm[x + y]);
+						
+						/* allocate by setting id */
+						for (z = 0; z < y; ++z) {
+							bm[x + z] = nid;
+						}
+						
+						/* optimization */
+						b->lfb = (x + bneed) - 2;
+						
+						/* count used blocks NOT bytes */
+						b->used += y;
+						
+						return (void*)(x * b->blk_size + (uintptr_t)&b[1]);
+					}
+					
+					/* x will be incremented by one ONCE more in our FOR loop */
+					x += (y - 1);
+					continue;
+				}
+			}
+		}
+	}
+	
+	return 0;
+}
+void heap_free(heap_bm_t *heap, void *ptr){
+	heap_block_t	*b;	
+	uintptr_t	ptroff;
+	uint32_t	bi, x;
+	uint8_t		*bm;
+	uint8_t		id;
+	uint32_t	max;
+	
+	for (b = heap->fblock; b; b = b->next) {
+		if ((uintptr_t)ptr > (uintptr_t)b && (uintptr_t)ptr < (uintptr_t)b + sizeof(heap_block_t) + b->size) {
+			/* found block */
+			ptroff = (uintptr_t)ptr - (uintptr_t)&b[1];  /* get offset to get block */
+			/* block offset in BM */
+			bi = ptroff / b->blk_size;
+			/* .. */
+			bm = (uint8_t*)&b[1];
+			/* clear allocation */
+			id = bm[bi];
+			/* oddly.. GCC did not optimize this */
+			max = b->size / b->blk_size;
+			for (x = bi; bm[x] == id && x < max; ++x) {
+				bm[x] = 0;
+			}
+			/* update free block count */
+			b->used -= x - bi;
+			return;
+		}
+	}
+	
+	/* this error needs to be raised or reported somehow */
+	return;
+}#include "paging.h"
+#include <stdint.h>
+#include <libk/stdio.h>
+#include "pmm.h"
+uint32_t page_directory[1024] __attribute__((aligned(4096)));
+uint32_t first_page_table[1024] __attribute__((aligned(4096)));
+uint32_t fb_page_table[1024] __attribute__((aligned(4096)));
+void paging_init(uint32_t fb_addr){
+	int i;
+	uint32_t fb_page = fb_addr / 4096;
+    	uint32_t pd_index = fb_addr >> 22;
+	for(i = 0; i < 1024; i++) {
+		page_directory[i] = 2;
+		first_page_table[i] = (i * 0x1000) | 3;
+		fb_page_table[i] = ((fb_page + i) * 0x1000) | 3;
+	}
+
+	page_directory[0] = (uint32_t)first_page_table | 3;
+	page_directory[1023] = (uint32_t)page_directory | 3; 
+	page_directory[pd_index] = (uint32_t)fb_page_table | 3;
+	load_page_dir(page_directory);
+	enable_paging();
+}
+
+void vmm_map_page(void *physaddr, void *virtualaddr, unsigned int flags) {
+   	uint32_t pdindex = (uint32_t)virtualaddr >> 22;
+    	uint32_t ptindex = (uint32_t)virtualaddr >> 12 & 0x03FF;
+    	uint32_t *pd = (uint32_t*)0xFFFFF000;
+
+	if (!(pd[pdindex] & 1)) {
+		uint32_t new_pt = pmm_alloc();
+		pd[pdindex] = new_pt | 3;
+	}
+
+    	uint32_t *pt = ((uint32_t*)0xFFC00000) + (0x400 * pdindex);
+    	pt[ptindex] = ((uint32_t)physaddr) | (flags & 0xFFF) | 0x01; 
+
+	asm volatile("invlpg (%0)" ::"r" (virtualaddr) : "memory");
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include "kernel.h"
+#include <stdint.h>
+#include <boot/multiboot.h>
+#include "drivers/video/framebuffer.h"
+#include "drivers/video/psf.h"
+#include <kernel/kernel.h>
+#include "kernel.h"
+#include "console/tty.h"
+#include <libk/stdio.h>
+#include "arch/x86/gdt.h"
+#include "arch/x86/idt.h"
+#include "arch/x86/pic.h"
+#include "drivers/timer.h"
+#include "drivers/input/ps2.h"
+#include "mm/pmm.h"
+#include "mm/paging.h"
+#include "mm/heap.h"
+#include "fs/fat32.h"
+#include "drivers/disk/ata.h"
+#include <libk/stdlib.h>
+#include <libk/string.h>
+#include "shell/shell.h"
+#include "sched/sched.h"
+heap_bm_t k_heap;
+
+void kernel_init(multiboot_info_t *mb_info){
+	asm volatile ("cli");
+	fb_init(mb_info);
+	psf1_load();
+	tty_init(&tty_main, 0xFFFFFF, 0);
+	tty_set_current(&tty_main);
+	k_puts("[SYSIO]        OUTPUT & TTY Initialized\n", STDOUT);
+	gdt_init();
+	k_puts("[SYS]          GDT Initialized\n", STDOUT);
+	idt_init();
+	k_puts("[SYS]          IDT Initialized\n", STDOUT);
+	pic_init();
+	k_puts("[SYS]          PIC Initialized\n", STDOUT);
+	timer_init();
+	k_puts("[SYS]          TIMER (irq0) Initialized\n", STDOUT);
+	ps2_init();
+	k_puts("[SYSIO]        KBD (PS2, irq1) Initialized\n", STDOUT);
+	pmm_init(mb_info);
+	k_puts("[SYS]          PMM Initialized\n", STDOUT);
+	paging_init((uint32_t)fb_main.addr);
+	k_puts("[SYS]          PAGING Initialized\n", STDOUT);
+
+	sched_init();
+	k_puts("[SYS]          SCHED Initialized\n", STDOUT);
+	heap_init(&k_heap);
+	for (int i = 0; i < 512; i++) {
+		uint32_t heap_phys = pmm_alloc();
+		vmm_map_page((void*)heap_phys, (void*)(0x500000 + i*4096), 3);
+		heap_add_block(&k_heap, 0x500000 + i*4096, 4096, 16);
+	}
+	k_puts("[SYS]          HEAP Initialized\n", STDOUT);
+
+	fat32_init();
+	k_puts("[SYSFS]        FAT32 Initialized\n", STDOUT);
+
+	asm volatile ("sti");
+
+	k_puts("Welcome to mOS32, you will be presented into a kernel shell\n",
+	STDOUT);
+
+	// uncomment this to clear the screen on boot
+	// nothing will happen
+	//shell_init();
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <boot/multiboot.h>
+#include "kernel.h"
+#include <libk/stdio.h>
+#include <libk/string.h>
+#include "console/tty.h"
+#include "shell/shell.h"
+#include "drivers/disk/ata.h"
+#include "fs/fat32.h"
+#include "sched/sched.h"
+#include <libk/stdlib.h>
+void idle_task(){
+	while (1){
+		asm("hlt");
+	}
+}
+
+void kernel_main(multiboot_info_t *mb_info){
+	kernel_init(mb_info);
+	void *stack = kmalloc(4096) + 4096;
+	struct task *t = task_add(idle_task, stack);
+	task_start(t);
+	while (1){
+		shell_prompt();
+		shell_execute();
+	}
+}
+void hcf(){
+	asm volatile ("cli");
+	for (;;)
+		asm volatile ("hlt");
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <stdint.h>
+#include "fat32.h"
+#include "../drivers/disk/ata.h"
+#include <libk/stdio.h>
+#include <libk/stdlib.h>
+#include <libk/string.h>
+struct fat32_info fat_info;
+void fat32_init(){
+	uint8_t *buf = kmalloc(512);
+	ata_read(0, 1, 0, (uint16_t*)buf);
+	struct fat32_bpbwe *bpbwe = (struct fat32_bpbwe *)buf;
+	struct fat32_bpb bpb = bpbwe->bpb;
+	struct fat32_ebpb ebpb = bpbwe->ebpb;
+	fat_info.bytes_per_sect = bpb.bytes_per_sect;
+	fat_info.rsvd_sect_count = bpb.rsvd_sect_count;
+	fat_info.root_clust = ebpb.root_cluster;
+	fat_info.sects_per_clust = bpb.sect_per_clust;
+
+	fat_info.fat_size = (bpb.total_sects_16 == 0)? ebpb.sect_per_fat_32 :
+		bpb.sect_per_fat_16;
+
+	fat_info.first_data_sect = bpb.rsvd_sect_count + (bpb.num_fats
+		* fat_info.fat_size);
+
+	fat_info.total_sect = (bpb.total_sects_16 == 0)? bpb.total_sects_32 :
+		bpb.total_sects_16;
+	
+	kfree(buf);
+}
+
+uint32_t fat32_cluster_to_lba(uint32_t cluster){
+	return fat_info.first_data_sect + (cluster - 2) * 
+		fat_info.sects_per_clust;
+}
+
+struct fat32_dir_entry *fat32_read_dir(uint32_t lba){
+	uint8_t *buf = kmalloc(512);
+	ata_read(lba, 1, 0, (uint16_t*)buf);
+	return (struct fat32_dir_entry*)buf;
+}
+
+uint32_t fat32_next_clust(uint32_t cluster){
+	uint32_t rsvd = fat_info.rsvd_sect_count;
+	uint32_t bps = fat_info.bytes_per_sect;
+	uint32_t fat_sect = rsvd + (cluster * 4) / bps;
+	uint32_t offset = (cluster * 4) % bps;
+	uint8_t *buf = kmalloc(512);
+	ata_read(fat_sect, 1, 0, (uint16_t*)buf);
+	uint32_t next = *(uint32_t*)(buf + offset) & 0x0FFFFFFF;
+	kfree(buf);
+	return next;
+}
+
+void fat32_read_file(uint32_t cluster, char *buf){
+	while (cluster < 0x0FFFFFF8){
+		uint32_t lba = fat32_cluster_to_lba(cluster);
+		ata_read(lba, 1, 0, (uint16_t*)buf);
+		buf += fat_info.bytes_per_sect;
+		cluster = fat32_next_clust(cluster);
+	}
+}
+
+void fat32_write_file(char *file_name, char *buf, uint32_t size){
+	uint32_t free_clust = fat32_find_free_clust();
+	uint32_t lba = fat32_cluster_to_lba(free_clust);
+	uint32_t fat_sect = fat_info.rsvd_sect_count + (free_clust * 4) /
+			    fat_info.bytes_per_sect;
+	uint32_t offset = (free_clust * 4) % fat_info.bytes_per_sect;
+
+	ata_write(lba, 1, 0, (uint16_t*)buf);
+	uint32_t *tmp_buf = kmalloc(512);
+	ata_read(fat_sect, 1, 0, (uint16_t*)tmp_buf);
+
+	*(uint32_t*)((uint8_t*)tmp_buf + offset) = 0x0FFFFFFF;
+	ata_write(fat_sect, 1, 0, (uint16_t*)tmp_buf);
+	kfree(tmp_buf);
+
+
+	struct fat32_dir_entry *entry = fat32_read_dir(fat32_cluster_to_lba(
+		fat_info.root_clust));
+	
+	for (int i = 0; i < 512 / 32; i++){
+		if (entry[i].filename[0] == 0x0){
+			entry[i].size = size;
+			entry[i].clust_high = (free_clust >> 16) & 0xFFFF;
+			entry[i].clust_low = free_clust & 0xFFFF;
+			entry[i].attribute = 0x20;
+			entry[i].creation_date = 0;
+			entry[i].creation_time = 0;
+			entry[i].creation_time_th = 0;
+			k_memcpy(entry[i].filename, file_name, 11);
+			entry[i].last_accessed = 0;
+			entry[i].last_mod_date = 0;
+			entry[i].last_mod_time = 0;
+			entry[i].ntrsvd = 0;
+			break;
+		}
+	}
+	uint32_t dir_lba = fat32_cluster_to_lba(fat_info.root_clust);
+	ata_write(dir_lba, 1, 0, (uint16_t*)entry);
+	kfree(entry);
+}
+
+void fat32_override_data_file(char *filename, char *buf, uint32_t size){
+	struct fat32_dir_entry *dir = fat32_read_dir(fat32_cluster_to_lba(fat_info.root_clust));
+
+	for (int i = 0; i < 512 / 32; i++){
+		if (k_memcmp(dir[i].filename, "HELLO   TXT", 11) == 0){
+			uint32_t cluster = dir[i].clust_low | (dir[i].clust_high << 16);
+			uint32_t offset = 0;
+			
+			while (offset < size && cluster < 0x0FFFFFF8){
+				uint32_t lba = fat32_cluster_to_lba(cluster);
+				ata_write(lba, 1, 0, (uint16_t*)(buf + offset));
+				offset += fat_info.bytes_per_sect;
+				cluster = fat32_next_clust(cluster);
+			}
+			
+			dir[i].size = size;
+			break;
+		}
+	}
+
+	ata_write(fat32_cluster_to_lba(fat_info.root_clust), 1, 0, (uint16_t*)dir);
+	kfree(dir);
+}
+
+uint32_t fat32_find_free_clust(){
+	uint32_t max = (fat_info.total_sect - fat_info.first_data_sect) / fat_info.sects_per_clust + 2;
+	uint8_t *buf = kmalloc(512);
+	for (uint32_t clust = 2; clust < max; clust++){
+		uint32_t fat_sect = fat_info.rsvd_sect_count + (clust * 4) / fat_info.bytes_per_sect;
+		uint32_t offset = (clust * 4) % fat_info.bytes_per_sect;
+		if (offset == 0)
+			ata_read(fat_sect, 1, 0, (uint16_t*)buf);
+		if (*(uint32_t*)(buf + offset) == 0x0) {
+			kfree(buf);
+			return clust;
+		}
+	}
+	kfree(buf);
+	return 0;
+}
+
+
+uint8_t fat32_lfn_checksum(uint8_t *short_name) {
+	uint8_t sum = 0;
+	for (int i = 11; i; i--)
+		sum = ((sum & 1) << 7) + (sum >> 1) + *short_name++;
+	return sum;
+}
+
+/* LFN so hard :sob: */
+/* Im too lazy to download emoji on my system ;)*/
+void fat32_conv_lf2sf(const char *long_name, char *short_name){
+	k_memset(short_name, ' ', 11);
+	int i = 0, j = 0;
+	while (long_name[i] && long_name[i] != '.' && j < 6){
+		short_name[j++] = long_name[i++] >= 'a' ? long_name[i++] - 32 : 
+			long_name[i++];
+	}
+
+	short_name[6] = '~';
+	short_name[7] = '1';
+	while (long_name[i] && long_name[i] != '.') i++;
+	if (long_name[i] == '.') i++;
+	j = 8;
+	while (long_name[i] && j < 11){
+		short_name[j++] = long_name[i++] >= 'a' ? long_name[i++] - 32 : 
+			long_name[i++];
+	}
+		
+}
+
+struct fat32_dir_entry *fat32_find_file(const char *filename) {
+	struct fat32_dir_entry *dir = fat32_read_dir(
+		fat32_cluster_to_lba(fat_info.root_clust)
+	);
+	for (int i = 0; i < 512 / 32; i++) {
+		if (dir[i].filename[0] == 0x00) break;
+		if (dir[i].filename[0] == 0xE5) continue;
+		if (k_memcmp(dir[i].filename, filename, 11) == 0)
+		return &dir[i];
+	}
+	kfree(dir);
+	return 0;
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <stdint.h>
+#include "gdt.h"
+
+struct gdt_r gdtr;
+struct gdt_desc gdt[6];
+struct tss_desc tss = {0};
+
+extern void gdt_load();
+extern char kernel_stack_top[];
+extern char ist1_stack_top[];
+extern char ist2_stack_top[];
+extern char ist3_stack_top[];
+extern char ist4_stack_top[];
+extern char ist5_stack_top[];
+extern char ist6_stack_top[];
+extern char ist7_stack_top[];
+
+/* i really got to keep the 80 char limit*/
+
+void gdt_set_desc(int n, uint32_t base,
+	uint32_t limit, uint8_t access, uint8_t flags)
+{
+	gdt[n].base_low = base & 0xFFFF;
+	gdt[n].base_mid = (base >> 16 & 0xFF);
+	gdt[n].base_high = (base >> 24 & 0xFF);
+
+	gdt[n].access_byte = access;
+	gdt[n].flags = flags & 0xF0;
+	gdt[n].flags |= ((limit >> 16) & 0xF);
+	gdt[n].limit_low = limit & 0xFFFF;
+}
+void gdt_init(){
+	gdtr.size = sizeof(gdt) - 1;
+	gdtr.offset = (uint32_t)&gdt;
+	tss.rsp0 = (uint64_t)kernel_stack_top;
+
+	tss.ist1 = (uint64_t)ist1_stack_top;
+	tss.ist2 = (uint64_t)ist2_stack_top;
+	tss.ist3 = (uint64_t)ist3_stack_top;
+	tss.ist4 = (uint64_t)ist4_stack_top;
+	tss.ist5 = (uint64_t)ist5_stack_top;
+	tss.ist6 = (uint64_t)ist6_stack_top;
+	tss.ist7 = (uint64_t)ist7_stack_top;
+	tss.iopb = 0xFFFF;
+
+	gdt_set_desc(0, 0, 0, 0, 0);
+	/* Kernel */
+	gdt_set_desc(1, 0, 0xFFFFF, 0x9A, 0xCF);
+	gdt_set_desc(2, 0, 0xFFFFF, 0x92, 0xCF);
+
+	/* User */
+	gdt_set_desc(3, 0, 0xFFFFF, 0xFA, 0xCF);
+	gdt_set_desc(4, 0, 0xFFFFF, 0xF2, 0xCF);
+	
+	gdt_set_desc(5, (uint32_t)&tss, sizeof(tss) - 1, 0x89, 0);
+
+	gdt_load();
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include "asm.h"
+
+void outb(uint16_t port, uint8_t val) {
+	asm volatile ("outb %0, %1" 
+		: 
+		: "a"(val), "Nd"(port)
+		: "memory");
+}
+uint8_t inb(uint16_t port){
+	uint8_t val;
+	asm volatile ("inb %1, %0" 
+		: "=a"(val)
+		: "Nd"(port));
+	return val;
+}
+void outw(uint16_t port, uint16_t val) {
+	asm volatile ("outw %0, %1" 
+		: 
+		: "a"(val), "Nd"(port)
+		: "memory");
+}
+uint16_t inw(uint16_t port){
+	uint16_t val;
+	asm volatile ("inw %1, %0" 
+		: "=a"(val)
+		: "Nd"(port));
+	return val;
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <stdint.h>
+#include "idt.h"
+#include <libk/stdio.h>
+#include "irq.h"
+#include "../../drivers/video/framebuffer.h"
+#include "../../console/tty.h"
+#include "../../kernel.h"
+
+
+const char *exception_messages[] = {
+	"Division By Zero",
+	"Debug",
+	"Non Maskable Interrupt",
+	"Breakpoint",
+	"Into Detected Overflow",
+	"Out of Bounds",
+	"Invalid Opcode",
+	"No Coprocessor",
+	"Double Fault",
+	"Coprocessor Segment Overrun",
+	"Bad TSS",
+	"Segment Not Present",
+	"Stack Fault",
+	"General Protection Fault",
+	"Page Fault",
+	"Unknown Interrupt",
+	"Coprocessor Fault",
+	"Alignment Check",
+	"Machine Check",
+};
+
+void isr_exception_handler(struct register_frame *frame){
+	if (frame->int_no > 31 && frame->int_no < 48){
+		irq_handler(frame);
+	}
+	if (frame->int_no < 32){
+		fb_clr(0x577AB3);
+		tty_init(&tty_main, 0xFFFFFF, 0x577AB3);
+		tty_set_current(&tty_main);
+		k_printf("INTERRUPT REACHED!\nINTERRUPT %s\n", 
+			(frame->int_no < 19 ? exception_messages[frame->int_no] 
+				: "reserved"));
+		
+		k_printf("REBOOT NOW!\n");
+		k_printf("EAX: %x, ECX: %x, EDX: %x, EBX: %x\n", 
+			frame->eax, frame->ecx, frame->edx, frame->ebx);
+		k_printf("ESP: %x, EBP: %x, ESI: %x, EDI: %x\n",
+			frame->esp, frame->ebp, frame->esi, frame->edi);
+		k_printf("GS: %x, FS: %x, ES: %x, DS: %x\n",
+			frame->gs, frame->fs, frame->es, frame->ds);
+		k_printf("EIP: %x, CS %x", frame->eip, frame->cs);
+		hcf();
+	}
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <stdint.h>
+#include "idt.h"
+
+extern uint32_t isr_stub_table[32];
+struct idt_r idtr;
+struct idt_desc idt[256];
+
+void idt_set_desc(int n, uint32_t offset, 
+	uint16_t segment, uint8_t attributes)
+{
+	idt[n].offset_low = offset & 0xFFFF;
+	idt[n].offset_high = (offset >> 16) & 0xFFFF;
+	idt[n].segment = segment;
+	idt[n].attributes = attributes;
+	idt[n].reserved = 0;
+}
+void idt_init(){
+	idtr.size = sizeof(idt) - 1;
+	idtr.offset = (uint32_t)&idt;
+	
+	for (int i = 0; i < 32; i++)
+		idt_set_desc(i, isr_stub_table[i], 0x08, 0x8E);
+	asm volatile ("lidt %0" 
+		:
+		: "m"(idtr));
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include "asm.h"
+#include <stdint.h>
+#include "idt.h"
+#include "irq.h"
+
+void *irq_routines[16] = {
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0
+};
+
+void irq_install_handler(int irq, void (*handler)(struct register_frame *r)){
+	irq_routines[irq] = handler;
+}
+
+void irq_uninstall_handler(int irq){
+	irq_routines[irq] = 0;
+}
+
+void irq_handler(struct register_frame *reg){
+	void (*handler)(struct register_frame *r) = irq_routines[
+						reg->int_no - 32];
+						/* Must keep 80 char limit */
+	if (handler) 
+		handler(reg);
+	if (reg->int_no >= 40)
+		outb(0xA0, 0x20);
+	outb(0x20, 0x20);
+}
+
+
+/* MIT LICENSE (C) 2026 JM-Pilot */
+#include "asm.h"
+#include "pic.h"
+#include <stdint.h>
+#include "idt.h"
+
+extern uint32_t irq_stub_table[16];
+
+void pic_remap(){
+	outb(0x20, 0x11);
+	outb(0xA0, 0x11);
+	outb(0x21, 0x20);
+	outb(0xA1, 0x28);
+	outb(0x21, 0x04);
+	outb(0xA1, 0x02);
+	outb(0x21, 0x01);
+	outb(0xA1, 0x01);
+	outb(0x21, 0x0);
+	outb(0xA1, 0x0);
+}
+
+void pic_init(){
+	pic_remap();
+	for (int i = 0; i < 16; i++)
+		idt_set_desc(32 + i, irq_stub_table[i], 0x08, 0x8E);
+}/* MIT LICENSE (C) 2026 JM-Pilot */
+#include <stdint.h>
+#include "shell.h"
+#include "../console/tty.h"
+#include <libk/stdio.h>
+#include <libk/string.h>
+#include "../drivers/video/framebuffer.h"
+#include "../mm/pmm.h"
+#include "../fs/fat32.h"
+#include <libk/stdlib.h>
+char buf[1024];
+
+
+void ls_root(){
+	struct fat32_dir_entry *dir = fat32_read_dir(
+		fat32_cluster_to_lba(fat_info.root_clust));
+	for (int i = 0; i < 512 / 32; i++) {
+		if (dir[i].filename[0] == 0x00) break;
+		if (dir[i].filename[0] == 0xE5) continue;
+		for (int j = 0; j < 11; j++)
+			k_printf("%c", dir[i].filename[j]);
+		k_printf("\n");
+	}
+	kfree(dir);
+}
+
+void shell_execute(){
+	if (k_strncmp(buf, "help", 4) == 0){
+		k_printf("mOS shell, made by JM-Pilot\n");
+		k_printf("help    -- Give information and list all cmds\n");
+		k_printf("sysinfo -- Give information about the system\n");
+		k_printf("clear   -- Clears the screen\n");
+		k_printf("ls	  -- list all files in root (/)\n");
+	}
+	else if (k_strncmp(buf, "clear", 5) == 0){
+		tty_clr_and_reset(&tty_main);
+	}
+	else if (k_strncmp(buf, "sysinfo", 8) == 0){
+		k_printf("myOS32\n");
+		k_printf("LICENSE: MIT LICENSE\n");
+		k_printf("CREATOR: JM-PILOT\n");
+		k_printf("MODE: KERNEL\n");
+		k_printf("MEMORY: %uMB\n", get_total_mem() / (1024 * 1024));
+		k_printf("SHELL: kShell\n");
+		k_printf("VERSION: 0.2\n");
+	}
+	else if (k_strncmp(buf, "ls", 2) == 0){
+		ls_root();
+	} 
+	else {
+		k_printf("INVALID CMD %s\n", buf);
+		k_printf("TYPE 'help' TO LIST CMDS\n");
+	}
+}
+
+void shell_prompt(){
+	k_memset(buf, 0, sizeof(buf));
+	k_puts("KERNEL > ", STDOUT);
+	k_gets(buf, sizeof(buf));
+	k_putc('\n', STDOUT);
+}
+
+void shell_init(){
+	tty_clr_and_reset(&tty_main);
+	k_puts("Welcome to mOS32 Shell!\n", STDOUT);
+}
