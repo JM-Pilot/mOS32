@@ -53,8 +53,10 @@ $(BIN_DIR)/$(OUTPUT)_disk.img:
 	mkdir -p $(BIN_DIR)/mnt
 	sudo mount -o loop,uid=$(shell id -u),gid=$(shell id -g) $@ $(BIN_DIR)/mnt
 	echo "Hello World" > $(BIN_DIR)/mnt/HELLO.TXT
+	echo " " > $(BIN_DIR)/mnt/WORLD.TXT
 	sudo umount $(BIN_DIR)/mnt
-
+# idk i didnt read the fat document properly but exanging HELLO.TXT and WORLD.txt
+# changes the ls order, it doesnt order it Alphabetically
 $(BIN_DIR)/$(OUTPUT).iso: $(BIN_DIR)/$(OUTPUT)_kernel.bin
 	mkdir -p $(BIN_DIR)/iso_build/boot/grub
 	cp $(SRC_DIR)/kernel/entry/grub.cfg $(BIN_DIR)/iso_build/boot/grub/

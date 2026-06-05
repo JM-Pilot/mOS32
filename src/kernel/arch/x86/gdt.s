@@ -3,9 +3,10 @@
 
 .extern gdtr
 .global gdt_load
-
 gdt_load:
 	lgdt gdtr
+	mov $0x28, %ax
+	ltr %ax
 
 	mov $0x10, %ax
 	mov %ax, %ds

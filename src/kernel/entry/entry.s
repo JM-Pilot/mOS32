@@ -22,18 +22,54 @@
 	.long 768
 	.long 32
 
+.global kernel_stack_top
+.global ist1_stack_top
+.global ist2_stack_top
+.global ist3_stack_top
+.global ist4_stack_top
+.global ist5_stack_top
+.global ist6_stack_top
+.global ist7_stack_top
+
 .section .bss
 	.align 16
-stack_bottom:
+kernel_stack_bottom:
 	.skip 16384 
-stack_top:
-
+kernel_stack_top:
+	.align 16
+ist1_stack_bottom:
+	.skip 4096
+ist1_stack_top:
+	.align 16
+ist2_stack_bottom:
+	.skip 4096
+ist2_stack_top:
+	.align 16
+ist3_stack_bottom:
+	.skip 4096
+ist3_stack_top:
+	.align 16
+ist4_stack_bottom:
+	.skip 4096
+ist4_stack_top:
+	.align 16
+ist5_stack_bottom:
+	.skip 4096
+ist5_stack_top:
+	.align 16
+ist6_stack_bottom:
+	.skip 4096
+ist6_stack_top:
+	.align 16
+ist7_stack_bottom:
+	.skip 4096
+ist7_stack_top:
 
 .section .text
 	.global _start
 	.type _start, @function
 _start:
-	mov $stack_top, %esp
+	mov $kernel_stack_top, %esp
 	push %ebx
 	call kernel_main
 

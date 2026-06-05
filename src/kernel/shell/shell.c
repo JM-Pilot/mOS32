@@ -30,7 +30,7 @@ void shell_execute(){
 		k_printf("help    -- Give information and list all cmds\n");
 		k_printf("sysinfo -- Give information about the system\n");
 		k_printf("clear   -- Clears the screen\n");
-		k_printf("ls	  -- list all files\n");
+		k_printf("ls	  -- list all files in root (/)\n");
 	}
 	else if (k_strncmp(buf, "clear", 5) == 0){
 		tty_clr_and_reset(&tty_main);
@@ -42,7 +42,7 @@ void shell_execute(){
 		k_printf("MODE: KERNEL\n");
 		k_printf("MEMORY: %uMB\n", get_total_mem() / (1024 * 1024));
 		k_printf("SHELL: kShell\n");
-		k_printf("VERSION: 0.1.x\n");
+		k_printf("VERSION: 0.2\n");
 	}
 	else if (k_strncmp(buf, "ls", 2) == 0){
 		ls_root();
